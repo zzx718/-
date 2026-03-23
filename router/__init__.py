@@ -24,6 +24,8 @@ def init_app(app):
     from .monitor import MonitorDataAPI, MonitorStats
     from .alert import AlertRuleAPI, AlertRuleDetailAPI, AlertHistoryAPI
     from .audit import AuditLogAPI
+    from .dify import DifyDecisionAPI, DifyDecisionDetailAPI, SmartAlertRuleAPI, SmartAlertRuleDetailAPI, DifyTriggerAPI
+    from .logs import LogSearchAPI, LogStatsAPI, RelatedLogsAPI
 
     #
     # 资源类绑定api，注册路由
@@ -60,3 +62,15 @@ def init_app(app):
     # ==================== 审计日志路由 ====================
     # 审计日志查询（管理员专用）
     api.add_resource(AuditLogAPI, '/audit-logs')
+    
+    # ==================== Dify决策路由 ====================
+    api.add_resource(DifyDecisionAPI, '/dify/decisions')
+    api.add_resource(DifyDecisionDetailAPI, '/dify/decisions/<int:decision_id>')
+    api.add_resource(SmartAlertRuleAPI, '/dify/smart-rules')
+    api.add_resource(SmartAlertRuleDetailAPI, '/dify/smart-rules/<int:rule_id>')
+    api.add_resource(DifyTriggerAPI, '/dify/trigger/<int:server_id>')
+    
+    # ==================== 日志查询路由 ====================
+    api.add_resource(LogSearchAPI, '/logs/search')
+    api.add_resource(LogStatsAPI, '/logs/stats')
+    api.add_resource(RelatedLogsAPI, '/logs/related')

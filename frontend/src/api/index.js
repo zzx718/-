@@ -140,4 +140,43 @@ export const alertApi = {
   getHistory: (params) => api.get('/alert-history', { params })
 }
 
+// Dify智能决策API
+export const difyApi = {
+  // 获取决策列表
+  getDecisions: (params) => api.get('/dify/decisions', { params }),
+  
+  // 获取决策详情
+  getDecision: (decisionId) => api.get(`/dify/decisions/${decisionId}`),
+  
+  // 提交人工反馈
+  submitFeedback: (decisionId, data) => api.put(`/dify/decisions/${decisionId}`, data),
+  
+  // 获取智能规则列表
+  getSmartRules: (params) => api.get('/dify/smart-rules', { params }),
+  
+  // 创建智能规则
+  createSmartRule: (data) => api.post('/dify/smart-rules', data),
+  
+  // 更新智能规则
+  updateSmartRule: (ruleId, data) => api.put(`/dify/smart-rules/${ruleId}`, data),
+  
+  // 删除智能规则
+  deleteSmartRule: (ruleId) => api.delete(`/dify/smart-rules/${ruleId}`),
+  
+  // 手动触发工作流
+  triggerWorkflow: (serverId) => api.post(`/dify/trigger/${serverId}`)
+}
+
+// 日志查询API
+export const logApi = {
+  // 搜索日志
+  searchLogs: (data) => api.post('/logs/search', data),
+  
+  // 获取日志统计
+  getLogStats: (params) => api.get('/logs/stats', { params }),
+  
+  // 获取关联日志
+  getRelatedLogs: (params) => api.get('/logs/related', { params })
+}
+
 export default api

@@ -69,3 +69,15 @@ SMTP_USER = os.getenv('SMTP_USER', '3157237108@qq.com')     # 你的QQ邮箱地�
 SMTP_PASS = os.getenv('SMTP_PASS', 'aukgzqmlvbgedgee')        # 你的QQ邮箱授权码（16位）
 SMTP_SENDER = os.getenv('SMTP_SENDER', '3157237108@qq.com')   # 发件人邮箱（通常与SMTP_USER相同）
 
+# ==================== Dify配置 ====================
+DIFY_API_URL = os.getenv('DIFY_API_URL', 'https://api.dify.ai/v1')
+DIFY_API_KEY = os.getenv('DIFY_API_KEY', '')
+DIFY_WORKFLOW_ID = os.getenv('DIFY_WORKFLOW_ID', '')
+
+# ==================== Elasticsearch配置 ====================
+ES_HOST = os.getenv('ES_HOST', 'localhost')
+ES_PORT = int(os.getenv('ES_PORT', '9200'))
+ES_USERNAME = os.getenv('ES_USERNAME', '')
+ES_PASSWORD = os.getenv('ES_PASSWORD', '')
+ES_USE_SSL = os.getenv('ES_USE_SSL', 'False').lower() == 'true'
+

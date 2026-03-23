@@ -51,6 +51,18 @@ const router = createRouter({
       component: () => import('../views/AuditLog.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
     },
+    {
+      path: '/dify-decisions',
+      name: 'dify-decisions',
+      component: () => import('../views/DifyDecisions.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/log-search',
+      name: 'log-search',
+      component: () => import('../views/LogSearch.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
   ],
 })
 

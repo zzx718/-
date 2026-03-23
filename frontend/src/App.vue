@@ -20,6 +20,8 @@
         <router-link to="/servers" class="nav-item">服务器</router-link>
         <router-link to="/monitor" class="nav-item">监控数据</router-link>
         <router-link v-if="authStore.user?.role === 'admin'" to="/alert-config" class="nav-item">告警配置</router-link>
+        <router-link v-if="authStore.user?.role === 'admin'" to="/dify-decisions" class="nav-item">Dify决策</router-link>
+        <router-link v-if="authStore.user?.role === 'admin'" to="/log-search" class="nav-item">日志查询</router-link>
         <router-link v-if="authStore.user?.role === 'admin'" to="/users" class="nav-item">用户管理</router-link>
         <router-link v-if="authStore.user?.role === 'admin'" to="/audit-logs" class="nav-item">审计日志</router-link>
       </div>

@@ -155,3 +155,96 @@ class AlertHistory(db.Model):
         db.session.add(history)
         db.session.commit()
         return history
+
+
+class DifyDecision(db.Model):
+    """Dify决策记录表 - 记录每次Dify工作流的决策"""
+    __tablename__ = 'dify_decisions'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    server_id = db.Column(db.Integer, db.ForeignKey('servers.id'), nullable=False, comment='关联服务器ID')
+    
+    workflow_id = db.Column(db.String(100), comment='Dify工作流ID')
+    workflow_run_id = db.Column(db.String(100), comment='Dify工作流运行ID')
+    
+    input_data = db.Column(db.JSON, comment='发送给Dify的完整输入数据')
+    current_metrics = db.Column(db.JSON, comment='当前指标快照')
+    history_trend = db.Column(db.JSON, comment='历史趋势数据')
+    
+    should_alert = db.Column(db.Boolean, default=False, comment='是否需要告警')
+    alert_level = db.Column(db.Enum('info', 'warning', 'critical', 'emergency'), comment='告警级别')
+    alert_reason = db.Column(db.Text, comment='告警原因说明')
+    
+    decision_output = db.Column(db.JSON, comment='Dify返回的完整决策结果')
+    
+    recommendation = db.Column(db.Text, comment='处理建议')
+    action_items = db.Column(db.JSON, comment='建议执行的操作列表')
+    
+    executed = db.Column(db.Boolean, default=False, comment='是否已执行')
+    execution_result = db.Column(db.Text, comment='执行结果')
+    
+    human_feedback = db.Column(db.Enum('correct', 'wrong', 'neutral'), comment='人工反馈: 正确/错误/中性')
+    feedback_comment = db.Column(db.Text, comment='反馈备注')
+    
+    created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间', index=True)
+    executed_at = db.Column(db.DateTime, comment='执行时间')
+    feedback_at = db.Column(db.DateTime, comment='反馈时间')
+    
+    @classmethod
+    def create(cls, server_id, workflow_id, input_data, decision_output):
+        decision = cls(
+            server_id=server_id,
+            workflow_id=workflow_id,
+            input_data=input_data,
+            current_metrics=input_data.get('current_metrics'),
+            history_trend=input_data.get('history_trend'),
+            decision_output=decision_output,
+            should_alert=decision_output.get('should_alert', False),
+            alert_level=decision_output.get('alert_level'),
+            alert_reason=decision_output.get('alert_reason'),
+            recommendation=decision_output.get('recommendation'),
+            action_items=decision_output.get('action_items')
+        )
+        db.session.add(decision)
+        db.session.commit()
+        return decision
+    
+    @classmethod
+    def get_by_server(cls, server_id, limit=50):
+        return cls.query.filter_by(server_id=server_id).order_by(cls.created_at.desc()).limit(limit).all()
+    
+    @classmethod
+    def get_pending(cls, limit=20):
+        return cls.query.filter_by(executed=False).order_by(cls.created_at.desc()).limit(limit).all()
+
+
+class SmartAlertRule(db.Model):
+    """智能告警规则表 - 管理Dify工作流绑定"""
+    __tablename__ = 'smart_alert_rules'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    server_id = db.Column(db.Integer, db.ForeignKey('servers.id'), nullable=False, comment='关联服务器ID')
+    
+    rule_name = db.Column(db.String(100), nullable=False, comment='规则名称')
+    rule_description = db.Column(db.Text, comment='规则描述')
+    
+    dify_workflow_id = db.Column(db.String(100), comment='绑定的Dify工作流ID')
+    dify_api_key = db.Column(db.String(200), comment='Dify API Key (可选，单独配置)')
+    
+    trigger_condition = db.Column(db.JSON, comment='前置触发条件')
+    
+    is_enabled = db.Column(db.Boolean, default=True, comment='是否启用')
+    priority = db.Column(db.Integer, default=0, comment='优先级，数字越大优先级越高')
+    
+    silent_minutes = db.Column(db.Integer, default=30, comment='告警静默期(分钟)')
+    
+    created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, comment='更新时间')
+    
+    @classmethod
+    def get_by_server(cls, server_id):
+        return cls.query.filter_by(server_id=server_id, is_enabled=True).order_by(cls.priority.desc()).all()
+    
+    @classmethod
+    def get_all_enabled(cls):
+        return cls.query.filter_by(is_enabled=True).all()
