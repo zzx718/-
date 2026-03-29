@@ -1,61 +1,109 @@
 version: '3.8'
 
 services:
-  backend:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
-    environment:
-      - FLASK_APP=app.py
-      - FLASK_DEBUG=1
-      - SQLALCHEMY_DATABASE_URI=mysql+pymysql://root:password@db:3306/monitor_system
-      - ELASTICSEARCH_HOST=elasticsearch
-      - ELASTICSEARCH_PORT=9200
-    depends_on:
-      - db
-      - elasticsearch
-
-  frontend:
-    build: 
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-
-  db:
+  mysql:
     image: mysql:8.0
+    container_name: monitor-mysql
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: monitor_system
+      MYSQL_DATABASE: monitor
     ports:
       - "3306:3306"
     volumes:
-      - db_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
+    networks:
+      - monitor-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: monitor-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - monitor-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: monitor-kafka
+    restart: always
+    environment:
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - monitor-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --list --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: monitor-elasticsearch
+    restart: always
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
     ports:
       - "9200:9200"
+      - "9300:9300"
     volumes:
       - es_data:/usr/share/elasticsearch/data
+    networks:
+      - monitor-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: monitor-kibana
+    restart: always
+    depends_on:
+      - elasticsearch
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
       - "5601:5601"
-    depends_on:
-      - elasticsearch
+    networks:
+      - monitor-net
 
 volumes:
-  db_data:
+  mysql_data:
+  redis_data:
+  kafka_data:
   es_data:
+
+networks:
+  monitor-net:
+    driver: bridge
