@@ -9,6 +9,10 @@
 - [x] DESIGN.md - 系统设计文档
 - [x] FUNCTION_FLOW.md - 功能流转文档
 - [x] DEVELOPMENT.md - 开发设计文档
+- [x] QUICKSTART.md - 快速开始指南
+- [x] DIFY_WORKFLOW_GUIDE.md - Dify工作流配置指南
+- [x] API.md - API接口文档
+- [x] DEPLOYMENT.md - 部署指南
 
 ### 配置文件
 - [x] docker-compose.yml - 添加Elasticsearch和Kibana
@@ -57,6 +61,10 @@
 | 2026-03-22 | Dify决策页面 | 创建frontend/src/views/DifyDecisions.vue，决策历史和规则管理 |
 | 2026-03-22 | 日志查询页面 | 创建frontend/src/views/LogSearch.vue，日志搜索和统计 |
 | 2026-03-22 | 导航菜单 | 更新frontend/src/App.vue，添加新菜单项 |
+| 2026-03-23 | 快速开始指南 | 创建QUICKSTART.md，包含环境准备、启动步骤 |
+| 2026-03-23 | Dify配置指南 | 创建DIFY_WORKFLOW_GUIDE.md，详细说明工作流配置 |
+| 2026-03-23 | API文档 | 创建API.md，详细说明所有接口 |
+| 2026-03-23 | 部署指南 | 创建DEPLOYMENT.md，Docker部署和手动部署说明 |
 
 ---
 
