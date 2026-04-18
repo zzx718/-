@@ -1,6 +1,6 @@
-# Flask 企业级服务器监控系统 (Monitor System)
+# 基于云原生与Dify的分布式服务器智能管控平台
 
-基于 Flask + Vue 3 开发的现代化服务器监控平台，旨在为中小型企业提供轻量级、可扩展的 IT 基础设施监控解决方案。系统支持服务器资源实时监控、精细化告警策略、资产分组管理及操作审计。
+基于 Flask + Vue 3 开发的现代化服务器监控平台，集成 Dify 低代码平台实现智能决策，使用 Elasticsearch 进行日志管理，为企业提供智能化的 IT 基础设施监控解决方案。系统支持服务器资源实时监控、智能告警决策、资产分组管理及操作审计。
 
 ## 🚀 核心功能
 
@@ -26,9 +26,24 @@
     - 管理后台：集成 JWT (JSON Web Token) 认证。
     - Agent 上报：支持 API Key 签名认证，防止恶意数据注入。
 
-### 5. 系统架构
-- **后端**：Flask + SQLAlchemy + MySQL + Flask-Restful (RESTful API 规范)
-- **前端**：Vue 3 + Vite + ECharts (可视化图表) + 原生 CSS (轻量化无外部 UI 库)
+### 5. 智能决策系统
+- **Dify集成**：集成 Dify 低代码平台，实现基于 LLM 的智能告警决策
+- **多维度判断**：结合 CPU、内存、磁盘指标，以及历史趋势和相关日志进行综合判断
+- **决策历史**：完整记录决策过程和结果，支持人工反馈优化
+- **智能规则管理**：支持基于 Dify 工作流的智能规则配置
+
+### 6. 日志管理系统
+- **Elasticsearch集成**：使用 Elasticsearch 存储和检索日志
+- **日志查询**：支持按服务器、日志类型、时间范围等多维度查询
+- **日志统计**：提供日志级别分布和时间趋势统计
+- **关联分析**：将日志与告警关联，辅助故障定位
+
+### 7. 系统架构
+- **后端**：Flask + SQLAlchemy + MySQL + Kafka + Redis + Flask-Restful (RESTful API 规范)
+- **前端**：Vue 3 + Vite + Element Plus + ECharts (可视化图表)
+- **存储**：MySQL (元数据) + Redis (实时数据) + Elasticsearch (日志数据)
+- **消息队列**：Kafka (数据传输)
+- **AI/低代码**：Dify (智能决策)
 - **部署**：支持 Docker 容器化部署，包含 Dockerfile 与 docker-compose.yml。
 
 ## 📁 项目结构  
@@ -37,28 +52,50 @@
 monitor_system/
 ├── app.py                    # Flask 应用入口
 ├── config/                   # 配置文件
-├── model/                    # 数据模型层 (Refactored)
+│   └── setting.py                # 系统配置
+├── model/                    # 数据模型层
 │   ├── base.py                   # 数据库实例
 │   ├── user.py                   # 用户模型
 │   ├── server.py                 # 服务器与分组模型
-│   ├── monitor.py                # 监控数据与告警模型
+│   ├── monitor.py                # 监控数据与告警模型（包含Dify决策模型）
 │   ├── audit.py                  # 审计日志模型
 │   └── associations.py           # 关联表
 ├── router/                   # API 路由层
 │   ├── server.py                 # 服务器/分组管理接口
 │   ├── monitor.py                # 监控数据接口
-│   └── ...
+│   ├── alert.py                  # 告警管理接口
+│   ├── user.py                   # 用户管理接口
+│   ├── audit.py                  # 审计日志接口
+│   ├── dify.py                   # Dify决策接口
+│   ├── logs.py                   # 日志查询接口
+│   └── __init__.py               # 路由注册
 ├── lib/                      # 核心工具库
 │   ├── async_tasks.py            # 异步任务队列
-│   └── api_auth.py               # 签名认证
+│   ├── api_auth.py               # 签名认证
+│   ├── jwt_utils.py              # JWT工具
+│   └── response.py               # 响应工具
 ├── mail/                     # 邮件告警模块
+│   └── alert.py                  # 告警邮件
+├── services/                 # 业务服务
+│   ├── dify_service.py           # Dify集成服务
+│   └── log_service.py            # 日志服务
 ├── frontend/                 # Vue 3 前端源码
+│   ├── src/                      # 源代码
+│   │   ├── api/                  # API 调用
+│   │   ├── views/                # 页面组件
+│   │   │   ├── DifyDecisions.vue # Dify决策管理页面
+│   │   │   └── LogSearch.vue     # 日志查询页面
+│   │   └── router/               # 路由配置
+│   └── package.json              # 前端依赖
 ├── scripts/                  # 运维脚本
 │   ├── monitor_client.py         # 监控 Agent
 │   ├── create_admin.py           # 创建管理员脚本
 │   └── cleanup_data.py           # 数据清理脚本
+├── migrations/               # 数据库迁移
 ├── docker-compose.yml        # 容器编排文件
-└── requirements.txt          # Python 依赖
+├── requirements.txt          # Python 依赖
+├── .env                      # 环境变量
+└── docs/                     # 文档
 ```
 
 ## 🛠️ 快速开始

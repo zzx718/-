@@ -147,22 +147,23 @@ const loadServers = async () => {
 const searchLogs = async () => {
   try {
     const params = {
-    page: page.value,
-    page_size: pageSize.value
+      page: page.value,
+      page_size: pageSize.value
+    }
+    
+    if (searchForm.value.server_id) params.server_id = searchForm.value.server_id
+    if (searchForm.value.log_type) params.log_type = searchForm.value.log_type
+    if (searchForm.value.keyword) params.keyword = searchForm.value.keyword
+    if (searchForm.value.start_time) params.start_time = searchForm.value.start_time
+    if (searchForm.value.end_time) params.end_time = searchForm.value.end_time
+    if (searchForm.value.log_levels?.length) params.log_levels = searchForm.value.log_levels
+    
+    const res = await logApi.searchLogs(params)
+    logs.value = res.data?.logs || []
+    logsTotal.value = res.data?.total || 0
+  } catch (e) {
+    console.error(e)
   }
-  
-  if (searchForm.value.server_id) params.server_id = searchForm.value.server_id
-  if (searchForm.value.log_type) params.log_type = searchForm.value.log_type
-  if (searchForm.value.keyword) params.keyword = searchForm.value.keyword
-  if (searchForm.value.start_time) params.start_time = searchForm.value.start_time
-  if (searchForm.value.end_time) params.end_time = searchForm.value.end_time
-  if (searchForm.value.log_levels?.length) params.log_levels = searchForm.value.log_levels
-  
-  const res = await logApi.searchLogs(params)
-  logs.value = res.data?.logs || []
-  logsTotal.value = res.data?.total || 0
-} catch (e) {
-  console.error(e)
 }
 
 const loadStats = async () => {
