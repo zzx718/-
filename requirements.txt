@@ -14,3 +14,4 @@ Gunicorn==21.2.0
 python-json-logger==2.0.7
 elasticsearch==8.11.0
 requests==2.33.1
+psutil==5.9.8
