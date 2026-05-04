@@ -2,12 +2,14 @@ import requests
 import os
 from datetime import datetime, timedelta
 from model import db, MonitorData, Server
+from services.log_service import LogService
 
 class DifyService:
     def __init__(self):
         self.api_url = os.getenv('DIFY_API_URL', 'https://api.dify.ai/v1')
         self.api_key = os.getenv('DIFY_API_KEY', '')
         self.workflow_id = os.getenv('DIFY_WORKFLOW_ID', '')
+        self.log_service = LogService()
     
     def is_configured(self):
         return bool(self.api_key and self.workflow_id)
@@ -49,6 +51,25 @@ class DifyService:
                 cpu_trend = 'rising'
             elif cpu_change_rate < -10:
                 cpu_trend = 'falling'
+                
+        # 查询相关日志数据(过去10分钟)
+        error_count = 0
+        warning_count = 0
+        recent_errors = []
+        if self.log_service.is_available():
+            # 搜索 error 日志
+            end_t = datetime.now()
+            start_t = end_t - timedelta(minutes=10)
+            start_iso = start_t.isoformat()
+            end_iso = end_t.isoformat()
+            
+            error_res = self.log_service.search_logs(server_id=server.id, log_levels=['error', 'fatal', 'critical'], start_time=start_iso, end_time=end_iso, page_size=5)
+            error_count = error_res.get('total', 0)
+            if error_count > 0:
+                recent_errors = [log.get('message', '') for log in error_res.get('logs', [])]
+            
+            warning_res = self.log_service.search_logs(server_id=server.id, log_levels=['warn', 'warning'], start_time=start_iso, end_time=end_iso, page_size=1)
+            warning_count = warning_res.get('total', 0)
         
         input_data = {
             'server_info': {
@@ -75,9 +96,9 @@ class DifyService:
                 'recent_data_points': recent_points
             },
             'related_logs': {
-                'error_count_last_10min': 0,
-                'warning_count_last_10min': 0,
-                'recent_errors': [],
+                'error_count_last_10min': error_count,
+                'warning_count_last_10min': warning_count,
+                'recent_errors': recent_errors,
                 'keyword_hits': {}
             },
             'context': {
@@ -128,6 +149,7 @@ class DifyService:
             return {
                 'success': True,
                 'workflow_run_id': result.get('workflow_run_id'),
+                'inputs': input_data,
                 'data': result.get('data', {}),
                 'outputs': result.get('data', {}).get('outputs', {})
             }

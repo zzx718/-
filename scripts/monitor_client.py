@@ -110,10 +110,10 @@ class MonitorClient:
                     print(f"数据发送成功: {list(metrics.keys())}")
                     return True
                 else:
-                    print(f"数据发送失败: {result.get('message')}")
+                    print(f"数据发送失败(1): {result.get('msg', result.get('message', '未知错误'))}")
                     return False
             else:
-                print(f"数据发送失败: HTTP {response.status_code}")
+                print(f"数据发送失败(2): HTTP {response.status_code} - {response.text}")
                 return False
         except Exception as e:
             print(f"数据发送异常: {e}")

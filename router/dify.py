@@ -253,7 +253,7 @@ class DifyTriggerAPI(Resource):
                     DifyDecision.create(
                         server_id=server_id,
                         workflow_id=dify_service.workflow_id,
-                        input_data=result.get('data', {}).get('inputs', {}),
+                        input_data=result.get('inputs', {}),
                         decision_output=decision_output
                     )
                 

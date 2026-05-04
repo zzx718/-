@@ -170,7 +170,7 @@
 
           <div class="detail-section">
             <h4>当前指标</h4>
-            <pre>{{ JSON.stringify(selectedDecision.current_metrics, null, 2) }}</pre>
+            <pre>{{ selectedDecision.current_metrics ? JSON.stringify(selectedDecision.current_metrics, null, 2) : '暂无数据（旧数据因未保存指标快照）' }}</pre>
           </div>
 
           <div class="detail-section">

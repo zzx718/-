@@ -19,7 +19,12 @@ class LogSearchAPI(Resource):
         try:
             data = request.json or {}
             
-            server_id = data.get('server_id', type=int)
+            server_id = data.get('server_id')
+            if server_id is not None:
+                try:
+                    server_id = int(server_id)
+                except ValueError:
+                    server_id = None
             log_type = data.get('log_type')
             container_name = data.get('container_name')
             service_name = data.get('service_name')
