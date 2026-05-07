@@ -24,8 +24,15 @@
     <!-- 历史趋势图表 -->
     <div v-if="selectedServerId" class="chart-section card" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       <div class="card-header" style="margin-bottom: 10px;">
-        <h3 style="margin: 0; color: #303133;">历史趋势分析 (最近24小时)</h3>
-        <div v-if="historyLoading" style="font-size: 14px; color: #999;">加载中...</div>
+        <h3 style="margin: 0; color: #303133;">历史趋势分析</h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <select v-model="historyHours" class="server-select" style="min-width: 120px;" @change="loadHistoryData">
+            <option :value="0.16">最近 10 分钟</option>
+            <option :value="1">最近 1 小时</option>
+            <option :value="24">最近 24 小时</option>
+          </select>
+          <div v-if="historyLoading" style="font-size: 14px; color: #999;">加载中...</div>
+        </div>
       </div>
       <div class="chart-container-wrapper">
         <div class="chart-container" ref="chartRef" style="height: 300px; width: 100%;"></div>
@@ -106,9 +113,11 @@ const loading = ref(false)
 const monitorData = ref([])
 const servers = ref([])
 const selectedServerId = ref('')
+const historyHours = ref(0.16) // 默认改成展示最近10分钟
 const chartRef = ref(null)
 const historyLoading = ref(false)
 let chartInstance = null
+let autoRefreshTimer = null
 
 // 计算属性
 const filteredData = computed(() => {
@@ -138,11 +147,18 @@ onMounted(() => {
   loadServers()
   loadMonitorData()
   window.addEventListener('resize', handleResize)
+  // 添加自动刷新(5秒1次) 解决图表不同步的问题
+  autoRefreshTimer = setInterval(() => {
+    refreshData()
+  }, 5000)
 })
 
 onUnmounted(() => {
   if (chartInstance) {
     chartInstance.dispose()
+  }
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
   }
   window.removeEventListener('resize', handleResize)
 })
@@ -183,6 +199,9 @@ const loadMonitorData = async () => {
 
 const refreshData = () => {
   loadMonitorData()
+  if (selectedServerId.value) {
+    loadHistoryData()
+  }
 }
 
 const formatValue = (value) => {
@@ -226,7 +245,7 @@ const loadHistoryData = async () => {
     const res = await monitorApi.getMonitorData({ 
         server_id: parseInt(selectedServerId.value),
         mode: 'history',
-        hours: 24 
+        hours: historyHours.value 
     })
     
     if (res.code === 0) {
@@ -244,11 +263,9 @@ const loadHistoryData = async () => {
 const initChart = (data) => {
     if (!chartRef.value) return
 
-    if (chartInstance) {
-        chartInstance.dispose()
+    if (!chartInstance) {
+        chartInstance = echarts.init(chartRef.value)
     }
-    
-    chartInstance = echarts.init(chartRef.value)
     
     // 数据处理
     const times = data.map(item => new Date(item.recorded_at).toLocaleTimeString())

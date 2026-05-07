@@ -65,7 +65,7 @@ class MonitorDataAPI(Resource):
             # 获取查询参数
             server_id = request.args.get('server_id', type=int)
             metric_type = request.args.get('metric_type')
-            hours = request.args.get('hours', 24, type=int)
+            hours = request.args.get('hours', 24, type=float) # 改为 float，支持 0.16小时 (10分钟) 等短时间
             mode = request.args.get('mode', 'latest')  # 新增mode参数
 
             if mode == 'history':

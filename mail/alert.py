@@ -1,9 +1,13 @@
 #告警模块
 
+import threading
 from datetime import datetime, timedelta
 from config.setting import DEFAULT_THRESHOLDS, ALERT_TEMPLATES, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SENDER
 from model import Server, User, AlertRule, AlertHistory
 
+# [新增亮点] 内存级别的并发告警锁，解决多线程因大模型API延迟导致的告警并发穿透
+LAST_ALERT_CACHE = {}
+ALERT_LOCK = threading.Lock()
 
 # 获取服务器的告警阈值（优先使用自定义规则）
 def get_server_thresholds(server, metric_type):
@@ -22,11 +26,11 @@ def get_server_thresholds(server, metric_type):
         return DEFAULT_THRESHOLDS.get(metric_type)
 
 # 基于IP地址的持续告警检查，如果80%以上的数据都超过阈值，认为持续告警
-def check_sustained_alert_by_ip(ip_address, metric_type, value, minutes=2, thresholds=None):
+def check_sustained_alert_by_ip(ip_address, metric_type, value, minutes=1, thresholds=None):
     from model import MonitorData
 
-    # 获取最近N分钟的数据
-    start_time = datetime.utcnow() - timedelta(minutes=minutes)
+    # 获取最近N分钟的数据 (这里必须用 datetime.now() 来和存入时的时区一致，而不能用 utcnow)
+    start_time = datetime.now() - timedelta(minutes=minutes)
 
     # 根据IP地址查询最近N分钟的数据
     recent_data = MonitorData.get_by_ip(ip_address, start_time)
@@ -48,11 +52,12 @@ def check_sustained_alert_by_ip(ip_address, metric_type, value, minutes=2, thres
     sustained_count = 0
 
     for data in recent_data:
-        if metric_type == 'cpu' and float(data.cpu_value) >= threshold_value:
+        # 这里的值是 Decimal 类型所以需要 float 转换
+        if metric_type == 'cpu' and float(data.cpu_value) >= float(threshold_value):
             sustained_count += 1
-        elif metric_type == 'memory' and float(data.memory_value) >= threshold_value:
+        elif metric_type == 'memory' and float(data.memory_value) >= float(threshold_value):
             sustained_count += 1
-        elif metric_type == 'disk' and float(data.disk_value) >= threshold_value:
+        elif metric_type == 'disk' and float(data.disk_value) >= float(threshold_value):
             sustained_count += 1
 
     # 如果80%以上的数据都超过阈值，认为持续告警
@@ -82,9 +87,33 @@ def check_and_send_alert_by_ip(ip_address, metric_type, value, current_metrics_a
         alert_level = determine_alert_level(value, thresholds)
 
         if alert_level:
-            # 5. 检查是否持续超过阈值（2分钟） - 传统粗筛
-            if not check_sustained_alert_by_ip(ip_address, metric_type, value, minutes=2, thresholds=thresholds):
+            # 5. 检查是否持续超过阈值（1分钟）- 配合答辩演示的暴躁模式
+            if not check_sustained_alert_by_ip(ip_address, metric_type, value, minutes=1, thresholds=thresholds):
                 return True
+                
+            # [新增亮点] 告警静默期 (Cooldown) 检测（结合内存锁和数据库）
+            # 解决现象：避免因为 Dify API 响应慢导致后来的并发线程穿透，瞬间触发多次相同告警和 AI 推理。
+            cache_key = f"{server.id}_{metric_type}"
+            
+            with ALERT_LOCK:
+                # 1. 优先检查内存储存（防多线程并发穿透）
+                last_time = LAST_ALERT_CACHE.get(cache_key)
+                if last_time and (datetime.now() - last_time) < timedelta(minutes=3):
+                    return True # 还在静默期（可能正在调用中，或刚刚触发），直接拦截
+
+                # 2. 检查持久化数据库层面（防重启服务后丢失内存）
+                last_alert = AlertHistory.query.filter_by(
+                    server_id=server.id, 
+                    metric_type=metric_type
+                ).order_by(AlertHistory.triggered_at.desc()).first()
+                
+                if last_alert and (datetime.now() - last_alert.triggered_at) < timedelta(minutes=3):
+                    # 同步到内存中优化下次查询
+                    LAST_ALERT_CACHE[cache_key] = last_alert.triggered_at
+                    return True # 依然在静默期，放弃本次重复请求
+                
+                # 3. 内存占位：到这里说明验证通过准备大模型请求和发邮件，立即给当前指标占位，锁定未来3分钟的后续请求
+                LAST_ALERT_CACHE[cache_key] = datetime.now()
                 
             # 6. 【核心改造】引入 Dify 智能决策机制
             from services.dify_service import dify_service
@@ -101,17 +130,26 @@ def check_and_send_alert_by_ip(ip_address, metric_type, value, current_metrics_a
                 if dify_res and dify_res.get('success'):
                     decision_output = dify_service.parse_decision(dify_res)
                     if decision_output:
-                        from model.monitor import DifyDecision # 确保导入正确
-                        DifyDecision.create(
-                            server_id=server.id,
-                            workflow_id=dify_service.workflow_id,
-                            input_data=dify_res.get('data', {}).get('inputs', {}),
-                            decision_output=decision_output
-                        )
-                        # 根据 Dify 的决定覆盖传统规则
-                        should_send_mail = decision_output.get('should_alert', False)
-                        alert_level = decision_output.get('alert_level', alert_level)
-                        alert_reason_msg = decision_output.get('alert_reason', '')
+                          try:
+                              from model.monitor import DifyDecision # 确保导入正确
+                              d_record = DifyDecision.create(
+                                  server_id=server.id,
+                                  workflow_id=dify_service.workflow_id,
+                                  input_data=dify_res.get('inputs', {}),
+                                  decision_output=decision_output
+                              )
+                              print(f"[DIFY] 成功写入决策记录至数据库, ID: {d_record.id}")
+                          except Exception as record_err:
+                              import traceback
+                              print(f"[DIFY] 写入决策记录失败: {record_err}")
+                              traceback.print_exc()
+                              
+                          # 根据 Dify 的决定覆盖传统规则
+                          should_send_mail = decision_output.get('should_alert', False)
+                          alert_level = decision_output.get('alert_level', alert_level)
+                          alert_reason_msg = decision_output.get('alert_reason', '')
+                else:
+                      print(f"[DIFY] 工作流未成功执行或超时，走默认兜底告警。错误信息: {dify_res.get('error') if dify_res else 'None'}")
             
             # 7. 根据最终决定是否发送邮件
             if not should_send_mail:
@@ -135,8 +173,8 @@ def check_and_send_alert_by_ip(ip_address, metric_type, value, current_metrics_a
                 if success:
                     success_count += 1
 
-            if success_count > 0:
-                # [新增] 记录告警历史
+            # [修复Bug] 无论邮件发送成功与否，只要判定为告警就必须把记录写到数据库，否则页面上看不到！
+            try:
                 msg_content = f"服务器 {server.server_name} {metric_type} 告警: 当前值 {value}%, 阈值 {threshold_val}%"
                 if alert_reason_msg:
                     msg_content += f"\n【AI智能诊断】: {alert_reason_msg}"
@@ -147,7 +185,10 @@ def check_and_send_alert_by_ip(ip_address, metric_type, value, current_metrics_a
                     threshold=threshold_val,
                     content=msg_content
                 )
-            return success_count > 0
+            except Exception as hist_err:
+                print(f"告警记录存入数据库失败: {hist_err}")
+
+            return True
         else:
             return True
 

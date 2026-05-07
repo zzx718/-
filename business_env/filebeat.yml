@@ -1,0 +1,24 @@
+﻿filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/nginx/access.log
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.overwrite_keys: true
+
+# 将 Filebeat 采集到的 @timestamp 覆盖掉 json 里的 timestamp
+processors:
+  - drop_fields:
+      fields: ["agent", "log", "ecs", "input", "host", "mac"]
+      ignore_missing: true
+
+setup.ilm.enabled: false
+setup.template.name: "server-logs"
+setup.template.pattern: "server-logs-*"
+
+output.elasticsearch:
+  # 将数据发回这台虚拟机内部的 Elasticsearch
+  hosts: ["http://192.168.245.111:9200"]
+  # 动态索引名称，每天生成一个，对齐系统查询规范
+  index: "server-logs-1-%{+yyyy.MM.dd}"

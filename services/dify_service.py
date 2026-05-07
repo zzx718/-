@@ -66,7 +66,7 @@ class DifyService:
             error_res = self.log_service.search_logs(server_id=server.id, log_levels=['error', 'fatal', 'critical'], start_time=start_iso, end_time=end_iso, page_size=5)
             error_count = error_res.get('total', 0)
             if error_count > 0:
-                recent_errors = [log.get('message', '') for log in error_res.get('logs', [])]
+                recent_errors = [f"[{log.get('log_type', 'UNKNOWN')}] {log.get('message', '')}" for log in error_res.get('logs', [])]
             
             warning_res = self.log_service.search_logs(server_id=server.id, log_levels=['warn', 'warning'], start_time=start_iso, end_time=end_iso, page_size=1)
             warning_count = warning_res.get('total', 0)
@@ -142,10 +142,12 @@ class DifyService:
         }
         
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            print(f"[DIFY] 发送请求给大模型: server_id={server_id}")
+            response = requests.post(url, json=payload, headers=headers, timeout=90)
             response.raise_for_status()
             result = response.json()
             
+            print(f"[DIFY] 大模型响应成功: workflow_run_id={result.get('workflow_run_id')}")
             return {
                 'success': True,
                 'workflow_run_id': result.get('workflow_run_id'),
@@ -154,6 +156,7 @@ class DifyService:
                 'outputs': result.get('data', {}).get('outputs', {})
             }
         except requests.exceptions.RequestException as e:
+            print(f"[DIFY] 请求异常: {str(e)}")
             return {
                 'success': False,
                 'error': str(e),
@@ -166,16 +169,26 @@ class DifyService:
         
         outputs = dify_result.get('outputs', {})
         
+        # 兼容不同的返回格式
+        email_data = outputs.get('email', {}) or outputs.get('email_1', {})
+        silent_period_data = outputs.get('silent_period_dict', {}) or outputs.get('silent_period_1', {})
+        if not silent_period_data and isinstance(outputs.get('silent_period'), dict):
+            silent_period_data = outputs.get('silent_period')
+            
+        should_alert = outputs.get('should_alert')
+        if should_alert is None:
+            should_alert = str(outputs.get('alert_level', 'info')).lower() in ['warning', 'critical', 'error', 'high']
+        
         return {
-            'should_alert': outputs.get('should_alert', False),
+            'should_alert': should_alert,
             'alert_level': outputs.get('alert_level', 'info'),
             'alert_reason': outputs.get('alert_reason', ''),
             'severity_score': outputs.get('severity_score', 0),
             'priority': outputs.get('priority', 'medium'),
             'recommendation': outputs.get('recommendation', ''),
             'action_items': outputs.get('action_items', []),
-            'email': outputs.get('email', {}),
-            'silent_period': outputs.get('silent_period', {})
+            'email': email_data,
+            'silent_period': silent_period_data
         }
 
 

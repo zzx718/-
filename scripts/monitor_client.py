@@ -163,11 +163,11 @@ class MonitorClient:
 
 
 def main():
-    API_URL = "http://127.0.0.1:5000/api"
+    API_URL = "http://192.168.245.1:5000/api"
     # 鉴权配置 (必须与服务端 api_auth.py 中的 API_CREDENTIALS 一致)
     APP_ID = "default_client" 
     SECRET_KEY = "sk_default_123456"
-    COLLECT_INTERVAL = 30
+    COLLECT_INTERVAL = 5 # 压测演示阶段，把间隔调小为 5 秒，马上出效果！
     IP_ADDRESS = None
 
     # 支持命令行传参覆盖默认配置

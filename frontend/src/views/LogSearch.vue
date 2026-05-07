@@ -11,7 +11,7 @@
         <div class="search-row">
           <div class="form-group">
             <label>服务器</label>
-            <select v-model="searchForm.server_id" class="form-select">
+            <select v-model="searchForm.server_id" class="form-select" @change="searchLogs">
               <option :value="null">-- 所有服务器 --</option>
               <option v-for="server in servers" :key="server.id" :value="server.id">
                 {{ server.server_name }} ({{ server.ip_address }})
@@ -21,10 +21,10 @@
 
           <div class="form-group">
             <label>日志类型</label>
-            <select v-model="searchForm.log_type" class="form-select">
+            <select v-model="searchForm.log_type" class="form-select" @change="searchLogs">
               <option value="">-- 全部 --</option>
               <option value="container">容器日志</option>
-              <option value="service">服务日志</option>
+              <option value="application">应用日志</option>
               <option value="system">系统日志</option>
             </select>
           </div>
@@ -33,7 +33,7 @@
             <label>日志级别</label>
             <div class="level-checkboxes">
               <label v-for="level in ['debug', 'info', 'warning', 'error', 'critical']" :key="level">
-                <input type="checkbox" v-model="searchForm.log_levels" :value="level" />
+                <input type="checkbox" v-model="searchForm.log_levels" :value="level" @change="searchLogs" />
                 {{ level.toUpperCase() }}
               </label>
             </div>
@@ -43,15 +43,15 @@
         <div class="search-row">
           <div class="form-group">
             <label>关键词</label>
-            <input type="text" v-model="searchForm.keyword" class="form-input" placeholder="搜索关键词..." />
+            <input type="text" v-model="searchForm.keyword" class="form-input" placeholder="搜索关键词..." @keyup.enter="searchLogs" />
           </div>
 
           <div class="form-group">
             <label>时间范围</label>
             <div class="time-range">
-              <input type="datetime-local" v-model="searchForm.start_time" class="form-input" />
+              <input type="datetime-local" v-model="searchForm.start_time" class="form-input" @change="searchLogs" />
               <span>-</span>
-              <input type="datetime-local" v-model="searchForm.end_time" class="form-input" />
+              <input type="datetime-local" v-model="searchForm.end_time" class="form-input" @change="searchLogs" />
             </div>
           </div>
         </div>
@@ -70,15 +70,15 @@
         </div>
         <div class="stat-item">
           <span class="stat-label">ERROR</span>
-          <span class="stat-value error">{{ stats.by_level?.error || 0 }}</span>
+          <span class="stat-value error">{{ stats.by_level?.ERROR || stats.by_level?.error || 0 }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">WARNING</span>
-          <span class="stat-value warning">{{ stats.by_level?.warning || 0 }}</span>
+          <span class="stat-value warning">{{ stats.by_level?.WARNING || stats.by_level?.warning || 0 }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">INFO</span>
-          <span class="stat-value info">{{ stats.by_level?.info || 0 }}</span>
+          <span class="stat-value info">{{ stats.by_level?.INFO || stats.by_level?.info || 0 }}</span>
         </div>
       </div>
 
@@ -91,6 +91,8 @@
             <div class="log-meta">
               <span class="log-time">{{ formatDate(log['@timestamp']) }}</span>
               <span class="log-level" :class="log.log_level">{{ log.log_level?.toUpperCase() || 'INFO' }}</span>
+              <span v-if="log.server_id" class="log-tag server-tag">{{ getServerName(log.server_id) }}</span>
+              <span v-if="log.log_type" class="log-tag type-tag">{{ getLogTypeName(log.log_type) }}</span>
               <span v-if="log.container_name" class="log-tag">{{ log.container_name }}</span>
               <span v-if="log.service_name" class="log-tag">{{ log.service_name }}</span>
             </div>
@@ -100,9 +102,9 @@
         </div>
 
         <div class="pagination" v-if="logsTotal > 0">
-          <button :disabled="page <= 1" @click="changePage(-1)">上一页</button>
-          <span>第 {{ page }} 页</span>
-          <button :disabled="logs.length < pageSize" @click="changePage(1)">下一页</button>
+          <button class="btn btn-outline" :disabled="page <= 1" @click="changePage(-1)">上一页</button>
+          <span class="page-info">第 {{ page }} 页 / 共 {{ Math.ceil(logsTotal / pageSize) }} 页</span>
+          <button class="btn btn-outline" :disabled="logs.length < pageSize" @click="changePage(1)">下一页</button>
         </div>
       </div>
     </div>
@@ -199,6 +201,20 @@ const formatDate = (str) => {
   if (!str) return '-'
   return new Date(str).toLocaleString()
 }
+
+const getServerName = (serverId) => {
+  const server = servers.value.find(s => s.id === serverId)
+  return server ? `${server.server_name} (${server.ip_address})` : `服务器 ${serverId}`
+}
+
+const getLogTypeName = (type) => {
+  const map = {
+    'system': '系统日志',
+    'container': '容器日志',
+    'application': '应用日志'
+  }
+  return map[type] || type
+}
 </script>
 
 <style scoped>
@@ -267,8 +283,52 @@ const formatDate = (str) => {
 .log-tag {
   padding: 2px 6px; background: #f4f4f5; color: #909399; border-radius: 3px; font-size: 11px;
 }
-.log-message { font-family: monospace; color: #303133; word-break: break-all; }
-
-.pagination { margin-top: 20px; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+  .server-tag {
+    background-color: #e3f2fd !important;
+    color: #0d47a1 !important;
+    border: 1px solid #bbdefb;
+  }
+  .type-tag {
+    background-color: #e8f5e9 !important;
+    color: #2e7d32 !important;
+    border: 1px solid #c8e6c9;
+  }
 .empty-text { text-align: center; color: #909399; padding: 40px; }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #ebeef5;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #606266;
+}
+
+.btn-outline {
+  background: white;
+  border: 1px solid #dcdfe6;
+  color: #606266;
+  padding: 6px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover:not(:disabled) {
+  color: #409eff;
+  border-color: #c6e2ff;
+  background-color: #ecf5ff;
+}
+
+.btn-outline:disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+  background-image: none;
+}
 </style>

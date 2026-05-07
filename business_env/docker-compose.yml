@@ -1,0 +1,23 @@
+﻿version: '3.8'
+
+services:
+  business-nginx:
+    image: nginx:alpine
+    container_name: business-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_logs:/var/log/nginx
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: business-filebeat
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - nginx_logs:/var/log/nginx:ro
+    command: filebeat -e -strict.perms=false
+
+volumes:
+  nginx_logs:

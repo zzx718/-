@@ -11,17 +11,16 @@ class LogService:
     
     def _connect(self):
         try:
+            es_url = f"http{'s' if ES_USE_SSL else ''}://{ES_HOST}:{ES_PORT}"
             if ES_USERNAME and ES_PASSWORD:
                 self.es_client = Elasticsearch(
-                    hosts=[{'host': ES_HOST, 'port': ES_PORT}],
+                    hosts=[es_url],
                     basic_auth=(ES_USERNAME, ES_PASSWORD),
-                    use_ssl=ES_USE_SSL,
                     verify_certs=False
                 )
             else:
                 self.es_client = Elasticsearch(
-                    hosts=[{'host': ES_HOST, 'port': ES_PORT}],
-                    use_ssl=ES_USE_SSL,
+                    hosts=[es_url],
                     verify_certs=False
                 )
             if not self.es_client.ping():
@@ -89,7 +88,8 @@ class LogService:
             if service_name:
                 query['bool']['must'].append({'term': {'service_name': service_name}})
             if log_levels and isinstance(log_levels, list):
-                query['bool']['must'].append({'terms': {'log_level': log_levels}})
+                upper_levels = [lvl.upper() for lvl in log_levels]
+                query['bool']['must'].append({'terms': {'log_level': upper_levels}})
             if keyword:
                 query['bool']['must'].append({'match': {'message': keyword}})
             
