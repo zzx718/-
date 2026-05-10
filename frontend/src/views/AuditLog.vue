@@ -57,7 +57,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '../stores/auth.js'
 import axios from 'axios'
 
 const authStore = useAuthStore()

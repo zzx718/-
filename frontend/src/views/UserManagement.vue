@@ -131,7 +131,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 // 移除Element Plus依赖，使用原生JavaScript
-import { userApi } from '@/api'
+import { userApi } from '../api/index.js'
 
 // 响应式数据
 const loading = ref(false)

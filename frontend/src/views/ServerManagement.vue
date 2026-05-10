@@ -169,7 +169,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { serverApi, userApi } from '@/api'
+import { serverApi, userApi } from '../api/index.js'
 
 // 响应式数据
 const loading = ref(false)

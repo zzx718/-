@@ -113,7 +113,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { logApi, serverApi } from '@/api'
+import { logApi, serverApi } from '../api/index.js'
 
 const servers = ref([])
 const logs = ref([])

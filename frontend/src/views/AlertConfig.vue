@@ -169,7 +169,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { alertApi, serverApi } from '@/api'
+import { alertApi, serverApi } from '../api/index.js'
 
 const activeTab = ref('rules')
 const rules = ref([])

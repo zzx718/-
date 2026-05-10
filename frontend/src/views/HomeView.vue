@@ -57,8 +57,8 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { monitorApi, serverApi } from '@/api'
+import { useAuthStore } from '../stores/auth.js'
+import { monitorApi, serverApi } from '../api/index.js'
 
 const authStore = useAuthStore()
 const loading = ref(false)

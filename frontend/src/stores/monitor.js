@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { monitorApi } from '@/api'
+import { monitorApi } from '../api/index.js'
 
 export const useMonitorStore = defineStore('monitor', () => {
   // 状态

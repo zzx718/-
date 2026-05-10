@@ -275,7 +275,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { difyApi, serverApi } from '@/api'
+import { difyApi, serverApi } from '../api/index.js'
 
 const activeTab = ref('decisions')
 const decisions = ref([])

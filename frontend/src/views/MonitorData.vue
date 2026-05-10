@@ -106,7 +106,7 @@
 import { ref, onMounted, computed, watch, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 // 移除Element Plus依赖，使用原生JavaScript
-import { monitorApi, serverApi } from '@/api'
+import { monitorApi, serverApi } from '../api/index.js'
 
 // 响应式数据
 const loading = ref(false)
