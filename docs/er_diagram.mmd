@@ -1,0 +1,99 @@
+erDiagram
+    User ||--o{ AuditLog : "creates"
+    User }o--o{ Server : "manages via"
+    ServerGroup ||--o{ Server : "contains"
+    Server ||--o{ MonitorData : "has"
+    Server ||--o{ AlertRule : "configures"
+    Server ||--o{ AlertHistory : "triggers"
+    Server ||--o{ DifyDecision : "requests"
+    User }o--|| server_users : "links"
+    Server }o--|| server_users : "links"
+    
+    User {
+        int id PK
+        string username UK
+        string password
+        string email
+        enum role
+        datetime created_at
+    }
+    
+    ServerGroup {
+        int id PK
+        string name UK
+        string description
+        datetime created_at
+    }
+    
+    Server {
+        int id PK
+        int group_id FK
+        string server_name
+        string ip_address UK
+        int port
+        string description
+        datetime created_at
+    }
+    
+    server_users {
+        int server_id PK_FK
+        int user_id PK_FK
+        datetime created_at
+    }
+    
+    MonitorData {
+        int id PK
+        int server_id FK
+        string ip_address
+        decimal cpu_value
+        decimal memory_value
+        decimal disk_value
+        datetime recorded_at
+    }
+    
+    AlertRule {
+        int id PK
+        int server_id FK
+        enum metric_type
+        decimal threshold
+        int silence_minutes
+        boolean is_enabled
+        datetime created_at
+        datetime updated_at
+    }
+    
+    AlertHistory {
+        int id PK
+        int server_id FK
+        string metric_type
+        decimal current_value
+        decimal threshold_snapshot
+        text alert_content
+        enum status
+        datetime triggered_at
+        datetime resolved_at
+    }
+    
+    DifyDecision {
+        int id PK
+        int server_id FK
+        string workflow_id
+        json input_data
+        boolean should_alert
+        enum alert_level
+        text alert_reason
+        json decision_output
+        text recommendation
+        datetime created_at
+    }
+    
+    AuditLog {
+        int id PK
+        int user_id FK
+        string username_snapshot
+        string action
+        string target
+        text details
+        string client_ip
+        datetime created_at
+    }
